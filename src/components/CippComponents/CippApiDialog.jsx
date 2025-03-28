@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useSettings } from "../../hooks/use-settings";
 import CippFormComponent from "./CippFormComponent";
+import { useMediaQuery } from "@mui/material";
 
 export const CippApiDialog = (props) => {
   const {
@@ -24,6 +25,12 @@ export const CippApiDialog = (props) => {
   const [addedFieldData, setAddedFieldData] = useState({});
   const [partialResults, setPartialResults] = useState([]);
   const [isFormSubmitted, setIsFormSubmitted] = useState(false);
+
+  const mdDown = useMediaQuery((theme) => theme.breakpoints.down("md"));
+
+  if (mdDown) {
+    other.fullScreen = true;
+  }
 
   useEffect(() => {
     if (createDialog.open) {
@@ -97,7 +104,7 @@ export const CippApiDialog = (props) => {
           } else {
             newData[key] = value;
           }
-        } else if (typeof value === 'boolean') {
+        } else if (typeof value === "boolean") {
           newData[key] = value;
         } else if (typeof value === "object" && value !== null) {
           const processedValue = processActionData(value, row, replacementBehaviour);
@@ -276,28 +283,30 @@ export const CippApiDialog = (props) => {
   };
 
   // Handling external link navigation
+  const [linkClicked, setLinkClicked] = useState(false);
+
   useEffect(() => {
-    if (api.link && createDialog.open) {
+    if (api.link && !linkClicked) {
       const linkWithRowData = api.link.replace(/\[([^\]]+)\]/g, (_, key) => {
         return getNestedValue(row, key) || `[${key}]`;
       });
 
       if (!linkWithRowData.startsWith("/")) {
+        setLinkClicked(true);
         window.open(linkWithRowData, api.target || "_blank");
-        createDialog.handleClose();
       }
     }
-  }, [api.link, createDialog.open]);
+  }, [api.link, linkClicked]);
 
   // Handling internal link navigation
-  if (api.link && createDialog.open) {
+  if (api.link && !linkClicked) {
     const linkWithRowData = api.link.replace(/\[([^\]]+)\]/g, (_, key) => {
       return getNestedValue(row, key) || `[${key}]`;
     });
 
     if (linkWithRowData.startsWith("/")) {
       router.push(linkWithRowData, undefined, { shallow: true });
-      createDialog.handleClose();
+      setLinkClicked(true);
     }
   }
 
@@ -329,44 +338,52 @@ export const CippApiDialog = (props) => {
   }
 
   return (
-    <Dialog fullWidth maxWidth="sm" onClose={handleClose} open={createDialog.open} {...other}>
-      <form onSubmit={formHook.handleSubmit(onSubmit)}>
-        <DialogTitle>{title}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={3}>{confirmText}</Stack>
-        </DialogContent>
-        <DialogContent>
-          <Grid container spacing={2}>
-            {fields &&
-              fields.map((fieldProps, index) => {
-                if (fieldProps?.api?.processFieldData) {
-                  fieldProps.api.data = processActionData(fieldProps.api.data, row);
-                }
-                return (
-                  <Grid item xs={12} key={index}>
-                    <CippFormComponent
-                      formControl={formHook}
-                      addedFieldData={addedFieldData}
-                      setAddedFieldData={setAddedFieldData}
-                      {...fieldProps}
-                    />
-                  </Grid>
-                );
-              })}
-          </Grid>
-        </DialogContent>
-        <DialogContent>
-          <CippApiResults apiObject={{ ...selectedType, data: partialResults }} />
-        </DialogContent>
-        <DialogActions>
-          <Button color="inherit" onClick={() => handleClose()}>
-            Close
-          </Button>
-          <Button variant="contained" type="submit" disabled={isFormSubmitted && !allowResubmit}>
-            {isFormSubmitted && allowResubmit ? "Reconfirm" : "Confirm"}
-          </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
+    <>
+      {!api?.link && (
+        <Dialog fullWidth maxWidth="sm" onClose={handleClose} open={createDialog.open} {...other}>
+          <form onSubmit={formHook.handleSubmit(onSubmit)}>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogContent>
+              <Stack spacing={2}>{confirmText}</Stack>
+            </DialogContent>
+            <DialogContent>
+              <Grid container spacing={2}>
+                {fields &&
+                  fields.map((fieldProps, index) => {
+                    if (fieldProps?.api?.processFieldData) {
+                      fieldProps.api.data = processActionData(fieldProps.api.data, row);
+                    }
+                    return (
+                      <Grid item xs={12} key={index}>
+                        <CippFormComponent
+                          formControl={formHook}
+                          addedFieldData={addedFieldData}
+                          setAddedFieldData={setAddedFieldData}
+                          {...fieldProps}
+                        />
+                      </Grid>
+                    );
+                  })}
+              </Grid>
+            </DialogContent>
+            <DialogContent>
+              <CippApiResults apiObject={{ ...selectedType, data: partialResults }} />
+            </DialogContent>
+            <DialogActions>
+              <Button color="inherit" onClick={() => handleClose()}>
+                Close
+              </Button>
+              <Button
+                variant="contained"
+                type="submit"
+                disabled={isFormSubmitted && !allowResubmit}
+              >
+                {isFormSubmitted && allowResubmit ? "Reconfirm" : "Confirm"}
+              </Button>
+            </DialogActions>
+          </form>
+        </Dialog>
+      )}
+    </>
   );
 };

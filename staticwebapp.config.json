@@ -134,10 +134,10 @@
   },
   "mimeTypes": {
     ".json": "text/json"
-  }
+  },
   "networking": {
     "allowedIpRanges": ["AzureFrontDoor.Backend"]
-  }
+  },
   "forwardingGateway": {
     "requiredHeaders": {
       "X-Azure-FDID" : "0bb7c55d-cfda-47ca-b9df-4ec4bc1fd6cb"

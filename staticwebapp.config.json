@@ -135,4 +135,16 @@
   "mimeTypes": {
     ".json": "text/json"
   }
+  "networking": {
+    "allowedIpRanges": ["AzureFrontDoor.Backend"]
+  }
+  "forwardingGateway": {
+    "requiredHeaders": {
+      "X-Azure-FDID" : "0bb7c55d-cfda-47ca-b9df-4ec4bc1fd6cb"
+    },
+    "allowedForwardedHosts": [
+      "cipp-cqa9e9headhjf7dx.z03.azurefd.net",
+      "cipp.gomachado.com"
+    ]
+  }
 }

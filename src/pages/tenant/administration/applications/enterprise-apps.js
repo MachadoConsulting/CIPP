@@ -1,4 +1,3 @@
-// this page is going to need some love for accounting for filters: https://github.com/KelvinTegelaar/CIPP/blob/main/src/views/tenant/administration/ListEnterpriseApps.jsx#L83
 import { Layout as DashboardLayout } from '../../../../layouts/index.js'
 import { TabbedLayout } from '../../../../layouts/TabbedLayout'
 import { CippTablePage } from '../../../../components/CippComponents/CippTablePage.jsx'
@@ -48,10 +47,20 @@ const Page = () => {
   const apiParams = {
     Endpoint: 'servicePrincipals',
     $select:
-      'id,appId,displayName,createdDateTime,accountEnabled,homepage,publisherName,signInAudience,replyUrls,verifiedPublisher,info,api,appOwnerOrganizationId,tags,passwordCredentials,keyCredentials',
+      'id,appId,displayName,createdDateTime,accountEnabled,homepage,publisherName,signInAudience,replyUrls,verifiedPublisher,info,api,applicationTemplateId,appOwnerOrganizationId,tags,passwordCredentials,keyCredentials',
     $count: true,
     $top: 999,
   }
+
+  // 'Visible to users?' in the MyApps portal is stored as the 'HideApp' tag on the service
+  // principal; a column filter on the (already-returned) tags collection surfaces hidden apps.
+  const filters = [
+    {
+      filterName: 'Hidden from MyApps portal',
+      value: [{ id: 'tags', value: 'HideApp' }],
+      type: 'column',
+    },
+  ]
 
   return (
     <CippTablePage
@@ -61,10 +70,19 @@ const Page = () => {
       apiDataKey="Results"
       actions={actions}
       offCanvas={offCanvas}
+      rowOpen={{
+        link: '/tenant/administration/applications/enterprise-app?spId=[id]&tenantFilter=[Tenant]',
+        condition: (row) => Boolean(row?.id),
+      }}
       simpleColumns={simpleColumns}
+      filters={filters}
       cardButton={
         <>
-          <Button component={Link} href="/tenant/tools/appapproval" startIcon={<RocketLaunch />}>
+          <Button
+            component={Link}
+            href="/tenant/tools/appapproval"
+            startIcon={<RocketLaunch />}
+          >
             Deploy Template
           </Button>
         </>

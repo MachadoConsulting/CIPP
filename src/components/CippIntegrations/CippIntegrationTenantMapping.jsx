@@ -47,13 +47,21 @@ const CippIntegrationSettings = ({ children }) => {
     defaultValues: mappings?.data,
   });
 
+  // Server-side automap writes the mappings itself, so the list has to be refetched or the
+  // table keeps showing the pre-automap rows and the new mappings look like they failed.
   const automapPostCall = ApiPostCall({
     datafromUrl: true,
+    relatedQueryKeys: [`IntegrationTenantMapping-${router.query.id}`],
   });
 
   const postCall = ApiPostCall({
     datafromUrl: true,
     relatedQueryKeys: [`IntegrationTenantMapping-${router.query.id}`],
+  });
+
+  const [syncTenantQuery, setSyncTenantQuery] = useState({ url: "", waiting: false, queryKey: "" });
+  const syncTenantResults = ApiGetCall({
+    ...syncTenantQuery,
   });
 
   const handleSubmit = () => {
@@ -99,12 +107,32 @@ const CippIntegrationSettings = ({ children }) => {
     formControl.setValue("integrationCompany", null);
   };
 
+  // Companies often differ from the GDAP tenant name only by case or legal suffix
+  // ("Company A LTD" vs "Company a Ltd" vs "Company A Limited"), so compare on a
+  // normalized form: lowercased, punctuation stripped, trailing legal suffixes removed.
+  const normalizeCompanyName = (name) => {
+    if (!name) return "";
+    let normalized = name
+      .toLowerCase()
+      .replace(/[.,'()&]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const legalSuffixes = /\s(ltd|limited|llc|llp|inc|incorporated|plc|pty|corp|corporation|gmbh|bv|co)$/;
+    while (legalSuffixes.test(normalized)) {
+      normalized = normalized.replace(legalSuffixes, "").trim();
+    }
+    return normalized;
+  };
+
   const handleAutoMap = () => {
     const newTableData = [];
     tenantList.data?.pages[0]?.forEach((tenant) => {
-      const matchingCompany = mappings.data.Companies.find(
-        (company) => company.name === tenant.displayName
+      const normalizedTenant = normalizeCompanyName(tenant.displayName);
+      const matchingCompanies = mappings.data.Companies.filter(
+        (company) => normalizeCompanyName(company.name) === normalizedTenant
       );
+      // More than one company collapsing to the same name is ambiguous - leave it manual.
+      const matchingCompany = matchingCompanies.length === 1 ? matchingCompanies[0] : null;
       if (
         Array.isArray(tableData) &&
         tableData?.find((item) => item.TenantId === tenant.customerId)
@@ -133,7 +161,39 @@ const CippIntegrationSettings = ({ children }) => {
     }
   };
 
+  // Sync a single mapped tenant on demand. The backend already supports this via the TenantID
+  // query param; we also pass the domain so the queued run is tagged to the tenant in the logbook.
+  const handleSyncTenant = (row) => {
+    const target = Array.isArray(row) ? row[0] : row;
+    if (!target?.TenantId) return;
+    // Re-clicking the same tenant reuses the query key, so trigger a refetch instead.
+    if (syncTenantQuery.waiting && syncTenantQuery.data?.TenantID === target.TenantId) {
+      syncTenantResults.refetch();
+      return;
+    }
+    setSyncTenantQuery({
+      url: "/api/ExecExtensionSync",
+      data: {
+        Extension: router.query.id,
+        TenantID: target.TenantId,
+        TenantFilter: target.TenantDomain,
+      },
+      waiting: true,
+      queryKey: `ExecExtensionSync-${router.query.id}-${target.TenantId}`,
+    });
+  };
+
   const actions = [
+    {
+      label: "Sync Now",
+      icon: (
+        <SvgIcon>
+          <Sync />
+        </SvgIcon>
+      ),
+      confirmText: "Queue a NinjaOne sync for [Tenant]?",
+      customFunction: handleSyncTenant,
+    },
     {
       label: "Delete Mapping",
       icon: <TrashIcon />,
@@ -149,11 +209,13 @@ const CippIntegrationSettings = ({ children }) => {
     return Array.isArray(tableData) ? tableData.map((item) => item.TenantId) : [];
   }, [tableData]);
 
+  // isSuccess only goes false -> true once, so depending on it alone meant a refetch never
+  // reached the table and server-side automap results stayed hidden until a page reload.
   useEffect(() => {
     if (mappings.isSuccess) {
       setTableData(mappings.data.Mappings ?? []);
     }
-  }, [mappings.isSuccess]);
+  }, [mappings.isSuccess, mappings.data]);
 
   return (
     <>
@@ -249,11 +311,12 @@ const CippIntegrationSettings = ({ children }) => {
                 reportTitle={`${extension.id}-tenant-map`}
                 data={tableData}
                 simple={false}
-                simpleColumns={["IntegrationName", "Tenant", "TenantDomain"]}
+                simpleColumns={["IntegrationName", "Tenant", "TenantDomain", "TenantId"]}
                 isFetching={mappings.isFetching}
                 refreshFunction={() => mappings.refetch()}
               />
             </Box>
+            <CippApiResults apiObject={syncTenantResults} />
             <CippApiResults apiObject={postCall} />
           </CardContent>
           <CardActions sx={{ justifyContent: "flex-end" }}>

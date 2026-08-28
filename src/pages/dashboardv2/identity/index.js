@@ -8,21 +8,29 @@ import { CippDataTable } from '../../../components/CippTable/CippDataTable'
 import { CippTestDetailOffCanvas } from '../../../components/CippTestDetail/CippTestDetailOffCanvas'
 import { CippReportToolbar } from '../../../components/CippComponents/CippReportToolbar'
 import { CippHead } from '../../../components/CippComponents/CippHead.jsx'
+import { AllTenantsTestResults } from '../../../components/CippAllTenants/AllTenantsTestResults'
 import { useRouter } from 'next/router'
 
 const Page = () => {
   const settings = useSettings()
   const { currentTenant } = settings
   const router = useRouter()
+  const isAllTenants = !currentTenant || currentTenant === 'AllTenants'
   // Only use default if router is ready and reportId is still not present
+  const defaultReportId =
+    settings.UserSpecificSettings?.defaultTestSuite?.value ||
+    settings.defaultTestSuite?.value ||
+    'ztna'
   const selectedReport =
-    router.isReady && !router.query.reportId ? 'ztna' : router.query.reportId || 'ztna'
+    router.isReady && !router.query.reportId
+      ? defaultReportId
+      : router.query.reportId || defaultReportId
 
   const testsApi = ApiGetCall({
     url: '/api/ListTests',
     data: { tenantFilter: currentTenant, reportId: selectedReport },
     queryKey: `${currentTenant}-ListTests-${selectedReport}`,
-    waiting: !!currentTenant && !!selectedReport,
+    waiting: !isAllTenants && !!currentTenant && !!selectedReport,
   })
 
   const reportsApi = ApiGetCall({
@@ -77,6 +85,19 @@ const Page = () => {
     },
   ]
 
+  if (isAllTenants) {
+    return (
+      <Container maxWidth={false}>
+        <CippHead title="Identity Tests" />
+        <AllTenantsTestResults
+          testType="Identity"
+          title="Identity tests by tenant"
+          perTenantPath="/dashboardv2/identity"
+        />
+      </Container>
+    )
+  }
+
   return (
     <Container maxWidth={false}>
       <CippHead title="Identity Tests" />
@@ -94,7 +115,6 @@ const Page = () => {
         simpleColumns={['Name', 'Risk', 'Status']}
         isFetching={testsApi.isFetching}
         offCanvas={offCanvas}
-        offCanvasOnRowClick={true}
         filters={filters}
         actions={[]}
         maxHeightOffset="600px"
@@ -111,3 +131,4 @@ Page.getLayout = (page) => (
 )
 
 export default Page
+

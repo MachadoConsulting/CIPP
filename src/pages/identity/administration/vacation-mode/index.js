@@ -6,6 +6,7 @@ import { Button } from "@mui/material";
 import Link from "next/link";
 import { EventAvailable } from "@mui/icons-material";
 import { useSettings } from "../../../../hooks/use-settings.js";
+import ScheduledTaskDetails from "../../../../components/CippComponents/ScheduledTaskDetails";
 
 const Page = () => {
   const initialState = useSettings();
@@ -15,6 +16,7 @@ const Page = () => {
     {
       label: "View Task Details",
       link: "/cipp/scheduler/task?id=[RowKey]",
+      pinned: true,
       icon: <EyeIcon />,
     },
     {
@@ -56,6 +58,11 @@ const Page = () => {
       type: "column",
     },
     {
+      filterName: "Location Alerts",
+      value: [{ id: "Name", value: "Location Alert Exclusion" }],
+      type: "column",
+    },
+    {
       filterName: "Mailbox Permissions",
       value: [{ id: "Name", value: "Mailbox Vacation" }],
       type: "column",
@@ -90,15 +97,15 @@ const Page = () => {
       simpleColumns={["Tenant", "Name", "Reference", "TaskState", "ScheduledTime", "ExecutedTime"]}
       filters={filterList}
       offCanvas={{
-        extendedInfoFields: [
-          "Name",
-          "TaskState",
-          "ScheduledTime",
-          "Reference",
-          "Tenant",
-          "ExecutedTime",
-        ],
+        children: (extendedData) => (
+          <ScheduledTaskDetails data={extendedData} showActions={true} showTitle={false} />
+        ),
+        size: "xl",
         actions: actions,
+      }}
+      rowOpen={{
+        link: '/cipp/scheduler/task?id=[RowKey]',
+        condition: (row) => Boolean(row?.RowKey),
       }}
     />
   );

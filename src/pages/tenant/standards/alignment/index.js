@@ -19,7 +19,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import standardsData from '../../../../data/standards.json'
+import { getStandards } from '../../../../utils/standards-data'
 
 const complianceColors = {
   compliant: 'success',
@@ -64,8 +64,8 @@ const getPageRows = (page) => {
 const getStandardInfo = (standardId) => {
   const baseName = standardId?.split('.').slice(0, -1).join('.')
   return (
-    standardsData.find((s) => s.name === standardId) ??
-    standardsData.find((s) => s.name === baseName)
+    getStandards().find((s) => s.name === standardId) ??
+    getStandards().find((s) => s.name === baseName)
   )
 }
 
@@ -117,7 +117,7 @@ const Page = () => {
       if (!standardKey) return
 
       const standardInfo = getStandardInfo(row.standardId)
-      const hasExactMatch = standardsData.find((s) => s.name === row.standardId)
+      const hasExactMatch = getStandards().find((s) => s.name === row.standardId)
       const standardName = hasExactMatch
         ? (standardInfo?.label ?? row.standardName ?? standardKey)
         : (row.standardName ?? standardInfo?.label ?? standardKey)
@@ -312,6 +312,7 @@ const Page = () => {
     {
       label: 'View Tenant Report',
       link: '/tenant/manage/applied-standards/?tenantFilter=[tenantFilter]&templateId=[standardId]',
+      pinned: true,
       icon: <EyeIcon />,
       color: 'info',
       target: '_self',
@@ -319,6 +320,7 @@ const Page = () => {
     {
       label: 'Edit Template',
       link: '/tenant/standards/templates/template?id=[standardId]&type=[standardType]',
+      pinned: true,
       icon: <Edit />,
       color: 'success',
       target: '_self',
@@ -351,6 +353,7 @@ const Page = () => {
     {
       label: 'View Tenant Report',
       link: '/tenant/manage/applied-standards/?tenantFilter=[tenantFilter]&templateId=[templateId]',
+      pinned: true,
       icon: <EyeIcon />,
       color: 'info',
       target: '_self',
@@ -358,6 +361,7 @@ const Page = () => {
     {
       label: 'Edit Template',
       link: '/tenant/standards/templates/template?id=[templateId]&type=[templateType]',
+      pinned: true,
       icon: <Edit />,
       color: 'success',
       target: '_self',
@@ -429,8 +433,8 @@ const Page = () => {
       const diffs = compareValues(expectedParsed, currentParsed)
       const baseName = row.standardId?.split('.').slice(0, -1).join('.')
       const prettyName =
-        standardsData.find((s) => s.name === row.standardId)?.label ??
-        standardsData.find((s) => s.name === baseName)?.label ??
+        getStandards().find((s) => s.name === row.standardId)?.label ??
+        getStandards().find((s) => s.name === baseName)?.label ??
         row.standardName
 
       const statusColor = getComplianceColor(row.complianceStatus)
@@ -961,7 +965,6 @@ const Page = () => {
             : 'listTenantAlignment'
       }
       offCanvas={isGranular ? granularOffCanvas : isByStandard ? byStandardOffCanvas : undefined}
-      offCanvasOnRowClick={isByStandard}
       cardButton={modeToggle}
     />
   )
@@ -974,3 +977,4 @@ Page.getLayout = (page) => (
 )
 
 export default Page
+

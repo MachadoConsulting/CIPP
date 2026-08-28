@@ -1,11 +1,28 @@
 import { Layout as DashboardLayout } from '../../../../layouts/index.js'
+import { TabbedLayout } from '../../../../layouts/TabbedLayout'
 import { CippTablePage } from '../../../../components/CippComponents/CippTablePage.jsx'
 import { AssignmentInd } from '@mui/icons-material'
 import CippFormComponent from '../../../../components/CippComponents/CippFormComponent'
+import { useRouter } from 'next/router'
+import { useMemo } from 'react'
+import tabOptions from './tabOptions.json'
 
 const Page = () => {
   const pageTitle = 'Licences Report'
   const apiUrl = '/api/ListLicensesReport'
+  const router = useRouter()
+
+  const urlFilters = useMemo(() => {
+    if (router.query.filters) {
+      try {
+        return JSON.parse(router.query.filters)
+      } catch (e) {
+        console.error('Failed to parse filters from URL:', e)
+        return null
+      }
+    }
+    return null
+  }, [router.query.filters])
 
   const simpleColumns = [
     'Tenant',
@@ -24,7 +41,8 @@ const Page = () => {
       type: 'POST',
       url: '/api/ExecBulkLicense',
       icon: <AssignmentInd />,
-      confirmText: 'Are you sure you want to assign [License] to the selected user?',
+      confirmText:
+        'Are you sure you want to assign [License] to the selected user?',
       multiPost: false,
       children: ({ formHook, row }) => (
         <CippFormComponent
@@ -39,7 +57,8 @@ const Page = () => {
             tenantFilter: row?.Tenant,
             url: '/api/ListGraphRequest',
             dataKey: 'Results',
-            labelField: (option) => `${option.displayName} (${option.userPrincipalName})`,
+            labelField: (option) =>
+              `${option.displayName} (${option.userPrincipalName})`,
             valueField: 'id',
             queryKey: `Users-${row?.Tenant}`,
             data: {
@@ -83,10 +102,15 @@ const Page = () => {
       simpleColumns={simpleColumns}
       actions={actions}
       offCanvas={offCanvas}
+      initialFilters={urlFilters}
     />
   )
 }
 
-Page.getLayout = (page) => <DashboardLayout>{page}</DashboardLayout>
+Page.getLayout = (page) => (
+  <DashboardLayout>
+    <TabbedLayout tabOptions={tabOptions}>{page}</TabbedLayout>
+  </DashboardLayout>
+)
 
 export default Page

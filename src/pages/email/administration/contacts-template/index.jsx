@@ -76,12 +76,20 @@ const Page = () => {
     {
       label: "Edit Contact Template",
       link: "/email/administration/contacts-template/edit?id=[GUID]",
+      pinned: true,
       icon: <Edit />,
       color: "success",
       target: "_self",
     },
   ];
-  const simpleColumns = ["name", "contactTemplateName", "GUID"];
+  const simpleColumns = [
+    "displayName",
+    "email",
+    "companyName",
+    "jobTitle",
+    "hidefromGAL",
+    "GUID",
+  ];
 
   return (
     <CippTablePage
@@ -92,7 +100,7 @@ const Page = () => {
       simpleColumns={simpleColumns}
       cardButton={
         <>
-          <CippDeployContactTemplateDrawer permissions={cardButtonPermissions} />
+          <CippDeployContactTemplateDrawer requiredPermissions={cardButtonPermissions} />
           <Button
             component={Link}
             href="/email/administration/contacts-template/add"

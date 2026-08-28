@@ -1,4 +1,3 @@
-// this page is going to need some love for accounting for filters: https://github.com/KelvinTegelaar/CIPP/blob/main/src/views/tenant/administration/ListEnterpriseApps.jsx#L83
 import { Layout as DashboardLayout } from '../../../../layouts/index.js'
 import { TabbedLayout } from '../../../../layouts/TabbedLayout'
 import { CippTablePage } from '../../../../components/CippComponents/CippTablePage.jsx'
@@ -66,6 +65,10 @@ const Page = () => {
       apiDataKey="Results"
       actions={actions}
       offCanvas={offCanvas}
+      rowOpen={{
+        link: '/tenant/administration/applications/app-registration?appId=[appId]&tenantFilter=[Tenant]',
+        condition: (row) => Boolean(row?.appId),
+      }}
       simpleColumns={simpleColumns}
     />
   )

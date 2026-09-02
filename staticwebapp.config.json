@@ -88,7 +88,7 @@
     ".json": "text/json"
   },
   "networking": {
-    "allowedIpRanges": ["AzureFrontDoor.Backend", "13.58.15.14", "18.218.107.198", "3.139.170.31", "3.138.55.79"]
+    "allowedIpRanges": ["AzureFrontDoor.Backend", "13.58.15.14/32", "18.218.107.198/32", "3.139.170.31/32", "3.138.55.79/32"]
   },
   "forwardingGateway": {
     "requiredHeaders": {

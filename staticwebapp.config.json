@@ -36,23 +36,58 @@
     },
     {
       "route": "/authredirect",
-      "allowedRoles": ["admin", "editor", "readonly", "authenticated", "anonymous"]
+      "allowedRoles": [
+        "admin",
+        "editor",
+        "readonly",
+        "authenticated",
+        "anonymous"
+      ]
     },
     {
       "route": "/LogoutRedirect",
-      "allowedRoles": ["admin", "editor", "readonly", "authenticated", "anonymous"]
+      "allowedRoles": [
+        "admin",
+        "editor",
+        "readonly",
+        "authenticated",
+        "anonymous"
+      ]
     },
     {
       "route": "/404",
-      "allowedRoles": ["admin", "editor", "readonly", "authenticated", "anonymous"]
+      "allowedRoles": [
+        "admin",
+        "editor",
+        "readonly",
+        "authenticated",
+        "anonymous"
+      ]
     },
     {
       "route": "/api/Public*",
-      "allowedRoles": ["admin", "editor", "readonly", "authenticated", "anonymous"]
+      "allowedRoles": [
+        "admin",
+        "editor",
+        "readonly",
+        "authenticated",
+        "anonymous"
+      ]
+    },
+    {
+      "route": "/api/*",
+      "allowedRoles": [
+        "anonymous"
+      ]
     },
     {
       "route": "*",
-      "allowedRoles": ["admin", "editor", "readonly", "authenticated"]
+      "allowedRoles": [
+        "admin",
+        "editor",
+        "readonly",
+        "authenticated"
+      ]
     }
   ],
   "navigationFallback": {
@@ -72,7 +107,10 @@
     "401": {
       "redirect": "/.auth/login/aad?prompt=select_account&post_login_redirect_uri=.referrer",
       "statusCode": 302,
-      "exclude": ["/assets/illustrations/*.{png,jpg,gif}", "/css/*"]
+      "exclude": [
+        "/assets/illustrations/*.{png,jpg,gif}",
+        "/css/*"
+      ]
     },
     "403": {
       "rewrite": "/403"
@@ -88,11 +126,17 @@
     ".json": "text/json"
   },
   "networking": {
-    "allowedIpRanges": ["AzureFrontDoor.Backend", "13.58.15.14/32", "18.218.107.198/32", "3.139.170.31/32", "3.138.55.79/32"]
+    "allowedIpRanges": [
+      "AzureFrontDoor.Backend",
+      "13.58.15.14/32",
+      "18.218.107.198/32",
+      "3.139.170.31/32",
+      "3.138.55.79/32"
+    ]
   },
   "forwardingGateway": {
     "requiredHeaders": {
-      "X-Azure-FDID" : "0bb7c55d-cfda-47ca-b9df-4ec4bc1fd6cb"
+      "X-Azure-FDID": "0bb7c55d-cfda-47ca-b9df-4ec4bc1fd6cb"
     },
     "allowedForwardedHosts": [
       "cipp-cqa9e9headhjf7dx.z03.azurefd.net",

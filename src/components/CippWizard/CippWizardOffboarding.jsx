@@ -124,6 +124,37 @@ export const CippWizardOffboarding = (props) => {
     }
   }, [disableForwarding, formControl])
 
+  // Clear every field the UI disables when deleting the user, so submitted values match what is shown
+  useEffect(() => {
+    if (deleteUser) {
+      formControl.setValue('ConvertToShared', false)
+      formControl.setValue('HideFromGAL', false)
+      formControl.setValue('removeCalendarInvites', false)
+      formControl.setValue('removePermissions', false)
+      formControl.setValue('removeCalendarPermissions', false)
+      formControl.setValue('RemoveRules', false)
+      formControl.setValue('WipeMobile', false)
+      formControl.setValue('RemoveMobile', false)
+      formControl.setValue('RemoveGroups', false)
+      formControl.setValue('RemoveLicenses', false)
+      formControl.setValue('RevokeSessions', false)
+      formControl.setValue('DisableSignIn', false)
+      formControl.setValue('ClearImmutableId', false)
+      formControl.setValue('ResetPass', false)
+      formControl.setValue('RemoveMFADevices', false)
+      formControl.setValue('RemoveTeamsPhoneDID', false)
+      formControl.setValue('DisableOneDriveSharing', false)
+      formControl.setValue('disableForwarding', false)
+      formControl.setValue('KeepCopy', false)
+      formControl.setValue('AccessNoAutomap', null)
+      formControl.setValue('AccessAutomap', null)
+      formControl.setValue('AccessSendAs', null)
+      formControl.setValue('AccessSendOnBehalf', null)
+      formControl.setValue('forward', null)
+      formControl.setValue('OOO', '')
+    }
+  }, [deleteUser, formControl])
+
   const getDefaultsSource = () => {
     return formControl.getValues('HIDDEN_defaultsSource') || 'user'
   }
@@ -184,6 +215,13 @@ export const CippWizardOffboarding = (props) => {
               <CippFormComponent
                 name="RemoveRules"
                 label="Remove all Rules"
+                type="switch"
+                formControl={formControl}
+                disabled={!!deleteUser}
+              />
+              <CippFormComponent
+                name="WipeMobile"
+                label="Wipe Mobile Devices (account data only)"
                 type="switch"
                 formControl={formControl}
                 disabled={!!deleteUser}
@@ -486,7 +524,13 @@ export const CippWizardOffboarding = (props) => {
                   fullWidth
                   formControl={formControl}
                 />
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                    display: 'block',
+                    mt: 1
+                  }}>
                   CIPP %variable% tokens (for example %tenantname%) stay literal here and are
                   resolved when the offboarding job runs. %username% is not the offboarded user.
                 </Typography>
@@ -608,5 +652,5 @@ export const CippWizardOffboarding = (props) => {
         replacementBehaviour="removeNulls"
       />
     </Stack>
-  )
+  );
 }

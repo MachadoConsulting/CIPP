@@ -25,10 +25,16 @@ jobs:
           node_sanitized_version=$(echo $node_raw_version | sed -E 's/[^0-9.]+//g')
           echo "node_version=$node_sanitized_version" >> $GITHUB_OUTPUT
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v7.0.0
-        with:
-          node-version: ${{ steps.get_node_version.outputs.node_version }}
+      - name: Install Node 22.22.2
+        run: |
+          curl -fsSL https://nodejs.org/dist/v22.22.2/node-v22.22.2-linux-x64.tar.xz | tar xJ
+          echo "$PWD/node-v22.22.2-linux-x64/bin" >> $GITHUB_PATH
+          node --version
+
+#      - name: Set up Node.js
+#        uses: actions/setup-node@v7.0.0
+#        with:
+#          node-version: ${{ steps.get_node_version.outputs.node_version }}
 
       # Install dependencies
       - name: Install Dependencies

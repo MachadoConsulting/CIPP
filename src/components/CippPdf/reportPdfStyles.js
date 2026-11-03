@@ -563,11 +563,11 @@ export const createReportStyles = (themeOrColour = DEFAULT_BRAND_COLOUR) => {
     },
 
     // STATUS
-    statusText: { fontSize: 9, fontStyle: 'italic' },
-    statusPassed: { color: REPORT_COLOURS.success },
-    statusFailed: { color: REPORT_COLOURS.danger },
-    statusInvestigate: { color: REPORT_COLOURS.warning },
-    statusSkipped: { color: REPORT_COLOURS.faint },
+    statusText: { fontSize: 9, fontWeight: 'bold' },
+    statusPassed: { color: '#16A34A' },
+    statusFailed: { color: '#DC2626' },
+    statusInvestigate: { color: '#F59E0B' },
+    statusSkipped: { color: '#70747B' },
 
     // FOOTER
     footer: {

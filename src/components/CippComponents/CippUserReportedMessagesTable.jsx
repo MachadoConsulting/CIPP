@@ -1,21 +1,20 @@
 import { useEffect, useState } from 'react'
+import { CippIcons } from '../../utils/icon-registry'
 import {
+  Alert,
+  Box,
   CircularProgress,
   Dialog,
   DialogContent,
   DialogTitle,
   IconButton,
+  Link,
   Skeleton,
+  ToggleButton,
+  ToggleButtonGroup,
+  Tooltip,
   Typography,
 } from '@mui/material'
-import { Close } from '@mui/icons-material'
-import {
-  ArrowDownTrayIcon,
-  CodeBracketIcon,
-  DocumentTextIcon,
-  EyeIcon,
-  NoSymbolIcon,
-} from '@heroicons/react/24/outline'
 import { CippTablePage } from './CippTablePage.jsx'
 import { CippMessageViewer } from './CippMessageViewer.jsx'
 import { CippDataTable } from '../CippTable/CippDataTable'
@@ -30,21 +29,84 @@ const traceDetailColumns = [
   'RecipientAddress',
 ]
 
-const categoryFilters = [
+const columnFilters = (column, entries) =>
+  entries.map(({ filterName, value }) => ({
+    filterName,
+    value: [{ id: column, value }],
+    type: 'column',
+    filterType: 'equal',
+  }))
+
+// Audit log: Microsoft's rescan verdict, the reported category there is an undocumented number
+const auditLogFilters = columnFilters('ResultCategory', [
+  { filterName: 'Verdict: Phish', value: 'Phish' },
+  { filterName: 'Verdict: Spam', value: 'Spam' },
+  { filterName: 'Verdict: Not Spam', value: 'NotSpam' },
+])
+
+// Defender Submissions (Graph): the submission category
+const submissionFilters = columnFilters('Category', [
   { filterName: 'Reported as Phishing', value: 'phishing' },
   { filterName: 'Reported as Junk', value: 'spam' },
   { filterName: 'Reported as Malware', value: 'malware' },
   { filterName: 'Reported as Not Junk', value: 'notJunk' },
-].map(({ filterName, value }) => ({
-  filterName,
-  value: [{ id: 'Category', value }],
-  type: 'column',
-  filterType: 'equal',
-}))
+])
+
+const sourceTips = {
+  AuditLog:
+    'Loaded from the unified audit log, two weeks at a time, up to 180 days back. New reports can take up to 90 minutes to show up.',
+  Submissions:
+    'Loaded from the Defender Submissions list. Microsoft only exposes submissions that reached Microsoft analysis, so Outlook reports often only show up here after an admin submits them to Microsoft.',
+}
 
 export const CippUserReportedMessagesTable = () => {
   const tenantFilter = useSettings().currentTenant
-  const queryKey = `UserReportedMessages-${tenantFilter}`
+  // AuditLog: every Outlook report from the unified audit log. Submissions: the Defender Submissions list via Graph
+  const [source, setSource] = useState('AuditLog')
+  const queryKey = `UserReportedMessages-${tenantFilter}-${source}`
+
+  // Defender's tid wants the tenant GUID. Same request as the tenant selector, so it shares that cache entry
+  const tenantList = ApiGetCall({
+    url: '/api/listTenants',
+    data: { AllTenantSelector: true },
+    queryKey: 'TenantSelector',
+  })
+  const tenantId = Array.isArray(tenantList.data)
+    ? tenantList.data.find((t) => t.defaultDomainName === tenantFilter)?.customerId
+    : undefined
+
+  const sourceToggle = (
+    <Box sx={{ display: 'inline-flex', alignItems: 'center', mr: 1, mt: '4px' }}>
+      <ToggleButtonGroup
+        value={source}
+        exclusive
+        size="small"
+        onChange={(event, newSource) => {
+          if (newSource !== null) setSource(newSource)
+        }}
+        sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1, fontSize: '0.75rem' } }}
+      >
+        <ToggleButton value="AuditLog" aria-label="audit log source">
+          <Tooltip title="Every Outlook report, from the unified audit log" placement="top">
+            <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+              <CippIcons.DocumentMagnifyingGlassIcon
+                style={{ width: 16, height: 16, marginRight: 6 }}
+              />
+              Audit Log
+            </Box>
+          </Tooltip>
+        </ToggleButton>
+        <ToggleButton value="Submissions" aria-label="defender submissions source">
+          <Tooltip title="Submissions that reached Microsoft, from Defender" placement="top">
+            <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+              <CippIcons.ShieldCheckIcon style={{ width: 16, height: 16, marginRight: 6 }} />
+              Submissions
+            </Box>
+          </Tooltip>
+        </ToggleButton>
+      </ToggleButtonGroup>
+    </Box>
+  )
 
   // In the AllTenants view each row belongs to a different tenant (row.Tenant); per-message
   // actions must target that tenant rather than the page-level "AllTenants" selection. Falls back
@@ -68,7 +130,21 @@ export const CippUserReportedMessagesTable = () => {
   const [traceDetails, setTraceDetails] = useState([])
   const [traceMessageId, setTraceMessageId] = useState(null)
   const [traceTenant, setTraceTenant] = useState(null)
+  const [traceWindow, setTraceWindow] = useState(null)
   const [messageSubject, setMessageSubject] = useState(null)
+
+  // Graph's message trace window caps at 10 days and defaults to ~48h with none supplied,
+  // so pin an explicit +/-1 day window around the message's received time when we have one.
+  const getTraceWindow = (receivedTime) => {
+    if (!receivedTime) return null
+    const receivedMs = new Date(receivedTime).getTime()
+    if (Number.isNaN(receivedMs)) return null
+    const receivedSeconds = Math.floor(receivedMs / 1000)
+    return {
+      startDate: receivedSeconds - 86400,
+      endDate: receivedSeconds + 86400,
+    }
+  }
 
   const contentParams = (row) => ({
     tenantFilter: resolveTenant(row),
@@ -105,7 +181,7 @@ export const CippUserReportedMessagesTable = () => {
     urlFromData: true,
     queryKey: `MessageTraceDetail-${traceTenant}-${traceMessageId}`,
     onResult: (result) => {
-      setTraceDetails(result)
+      setTraceDetails(result?.Results ?? result)
     },
   })
 
@@ -134,13 +210,16 @@ export const CippUserReportedMessagesTable = () => {
   const viewMessageTrace = (...args) => {
     const row = resolveRow(...args)
     const rowTenant = resolveTenant(row)
+    const window = getTraceWindow(row.ReceivedDateTime)
     setTraceTenant(rowTenant)
     setTraceMessageId(row.InternetMessageId)
+    setTraceWindow(window)
     getMessageTraceDetails.mutate({
       url: '/api/ListMessageTrace',
       data: {
         tenantFilter: rowTenant,
         messageId: row.InternetMessageId,
+        ...(window ?? {}),
       },
     })
     setMessageSubject(row.Subject)
@@ -186,7 +265,7 @@ export const CippUserReportedMessagesTable = () => {
       label: 'Preview Message',
       noConfirm: true,
       customFunction: viewMessage,
-      icon: <EyeIcon />,
+      icon: <CippIcons.EyeIcon />,
       hideBulk: true,
       condition: (row) => Boolean(row.InternetMessageId),
     },
@@ -194,7 +273,7 @@ export const CippUserReportedMessagesTable = () => {
       label: 'View Message Headers',
       noConfirm: true,
       customFunction: viewHeaders,
-      icon: <CodeBracketIcon />,
+      icon: <CippIcons.CodeBracketIcon />,
       hideBulk: true,
       condition: (row) => Boolean(row.InternetMessageId),
     },
@@ -202,7 +281,7 @@ export const CippUserReportedMessagesTable = () => {
       label: 'Download Message (.eml)',
       noConfirm: true,
       customFunction: downloadMessage,
-      icon: <ArrowDownTrayIcon />,
+      icon: <CippIcons.ArrowDownTrayIcon />,
       hideBulk: true,
       condition: (row) => Boolean(row.InternetMessageId),
     },
@@ -210,7 +289,7 @@ export const CippUserReportedMessagesTable = () => {
       label: 'View Message Trace',
       noConfirm: true,
       customFunction: viewMessageTrace,
-      icon: <DocumentTextIcon />,
+      icon: <CippIcons.DocumentTextIcon />,
       hideBulk: true,
       condition: (row) => Boolean(row.InternetMessageId),
     },
@@ -238,7 +317,7 @@ export const CippUserReportedMessagesTable = () => {
       ],
       confirmText:
         'Block sender [Sender] by adding an entry to the Tenant Allow/Block List?',
-      icon: <NoSymbolIcon />,
+      icon: <CippIcons.NoSymbolIcon />,
       condition: (row) => Boolean(row.Sender),
     },
   ]
@@ -270,6 +349,7 @@ export const CippUserReportedMessagesTable = () => {
     'Sender',
     'RecipientEmail',
     'ReportedBy',
+    'Source',
     'Category',
     'Status',
     'ResultCategory',
@@ -291,14 +371,36 @@ export const CippUserReportedMessagesTable = () => {
   return (
     <>
       <CippTablePage
+        // Remount per source: the table keeps applied column filters across query key changes, and the two sources
+        // filter on different columns and values
+        key={source}
         title="Quarantine - User Reported Messages"
         apiUrl="/api/ListUserReportedMessages"
+        apiData={{ Source: source }}
         apiDataKey="Results"
         queryKey={queryKey}
+        cardButton={sourceToggle}
         actions={actions}
         offCanvas={offCanvas}
         simpleColumns={simpleColumns}
-        filters={categoryFilters}
+        filters={source === 'AuditLog' ? auditLogFilters : submissionFilters}
+        tableFilter={
+          <Alert severity="info">
+            {sourceTips[source]}
+            {tenantId && (
+              <>
+                {' '}
+                <Link
+                  href={`https://security.microsoft.com/reportsubmission?viewid=user&tid=${tenantId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Open the user reported submissions in Defender
+                </Link>
+              </>
+            )}
+          </Alert>
+        }
       />
       <Dialog
         open={dialogOpen}
@@ -313,12 +415,15 @@ export const CippUserReportedMessagesTable = () => {
             onClick={() => setDialogOpen(false)}
             sx={{ position: 'absolute', right: 8, top: 8 }}
           >
-            <Close />
+            <CippIcons.Close />
           </IconButton>
         </DialogTitle>
         <DialogContent dividers>
           {messageDialogContent(getMessageContents, (data) => (
-            <CippMessageViewer emailSource={data?.Message} />
+            <CippMessageViewer
+              emailSource={data?.Message}
+              emlBase64={data?.EmlBase64}
+            />
           ))}
         </DialogContent>
       </Dialog>
@@ -335,7 +440,7 @@ export const CippUserReportedMessagesTable = () => {
             onClick={() => setHeaderDialogOpen(false)}
             sx={{ position: 'absolute', right: 8, top: 8 }}
           >
-            <Close />
+            <CippIcons.Close />
           </IconButton>
         </DialogTitle>
         <DialogContent dividers>
@@ -367,7 +472,7 @@ export const CippUserReportedMessagesTable = () => {
             onClick={() => setTraceDialogOpen(false)}
             sx={{ position: 'absolute', right: 8, top: 8 }}
           >
-            <Close />
+            <CippIcons.Close />
           </IconButton>
         </DialogTitle>
         <DialogContent dividers>
@@ -389,6 +494,7 @@ export const CippUserReportedMessagesTable = () => {
                   data: {
                     tenantFilter: traceTenant,
                     messageId: traceMessageId,
+                    ...(traceWindow ?? {}),
                   },
                 })
               }

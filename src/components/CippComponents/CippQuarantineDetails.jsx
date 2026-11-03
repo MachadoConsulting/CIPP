@@ -12,8 +12,8 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
+import { CippIcons } from '../../utils/icon-registry'
 import NextLink from 'next/link'
-import { ExpandMore } from '@mui/icons-material'
 import { CippPropertyList } from './CippPropertyList'
 import { CippCopyToClipBoard } from './CippCopyToClipboard'
 import { getCippFormatting } from '../../utils/get-cipp-formatting'
@@ -97,7 +97,7 @@ const Section = ({
       defaultExpanded={defaultExpanded}
       sx={{ '&:before': { display: 'none' } }}
     >
-      <AccordionSummary expandIcon={<ExpandMore />}>
+      <AccordionSummary expandIcon={<CippIcons.ExpandMore />}>
         <Typography variant="subtitle1">{title}</Typography>
       </AccordionSummary>
       <AccordionDetails sx={{ p: 0, pb: 1 }}>
@@ -156,6 +156,10 @@ export const CippQuarantineDetails = ({ row }) => {
     isEmail && details.isSuccess && !analyzed && !permissionError
   const headerFallback =
     isEmail && details.data?.Metadata?.Source === 'Headers' && !permissionError
+  // On the header fallback the URLs and attachments come from the exported message, not from
+  // Defender, so there is no verdict to show. 'Unknown' read as a verdict, which is wrong.
+  const verdictLabel = (threatType) =>
+    formatEnum(threatType) ?? (headerFallback ? 'Not analysed' : 'Unknown')
 
   const quarantineFields = [
     { label: 'Received', value: row.ReceivedTime, field: 'ReceivedTime' },
@@ -284,7 +288,9 @@ export const CippQuarantineDetails = ({ row }) => {
     <Stack spacing={2} sx={{ mt: 2 }}>
       <Stack spacing={1} sx={{ px: 1 }}>
         <Typography variant="h6">{row.Subject}</Typography>
-        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+        <Stack direction="row" spacing={1} useFlexGap sx={{
+          flexWrap: "wrap"
+        }}>
           {hasValue(row.Type) && (
             <Chip
               size="small"
@@ -320,7 +326,9 @@ export const CippQuarantineDetails = ({ row }) => {
           )}
         </Stack>
         {permissionError && (
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
             Extended threat details require the SecurityAnalyzedMessage.Read.All
             permission, which has not been granted yet. Run the{' '}
             <Link component={NextLink} href="/cipp/settings/permissions">
@@ -330,13 +338,17 @@ export const CippQuarantineDetails = ({ row }) => {
           </Typography>
         )}
         {enrichmentUnavailable && (
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
             Extended threat details are unavailable for this message (requires
             Microsoft Defender for Office 365).
           </Typography>
         )}
         {headerFallback && (
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
             Showing details parsed from the message headers and message
             contents. Microsoft per-URL and per-attachment threat verdicts
             require Microsoft Defender for Office 365 Plan 2.
@@ -382,7 +394,7 @@ export const CippQuarantineDetails = ({ row }) => {
                         size="small"
                         variant="outlined"
                         color={threatChipColor(urlEntry.threatType)}
-                        label={formatEnum(urlEntry.threatType) ?? 'Unknown'}
+                        label={verdictLabel(urlEntry.threatType)}
                       />
                     </TableCell>
                     <TableCell>{urlEntry.detectionMethod}</TableCell>
@@ -415,7 +427,7 @@ export const CippQuarantineDetails = ({ row }) => {
                         size="small"
                         variant="outlined"
                         color={threatChipColor(attachment.threatType)}
-                        label={formatEnum(attachment.threatType) ?? 'Unknown'}
+                        label={verdictLabel(attachment.threatType)}
                       />
                     </TableCell>
                     <TableCell>{attachment.malwareFamily}</TableCell>
@@ -436,7 +448,7 @@ export const CippQuarantineDetails = ({ row }) => {
         )}
       </Stack>
     </Stack>
-  )
+  );
 }
 
 export default CippQuarantineDetails
